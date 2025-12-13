@@ -1,10 +1,80 @@
 ﻿@page
 @model IndexModel
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Authentication
+
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "Dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+@if (!(User.Identity?.IsAuthenticated ?? false))
+{
+    <script>
+        window.location.href = '/Login';
+    </script>
+}
+else
+{
+    <div class="container mt-5">
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <h1><i class="bi bi-speedometer2"></i> Dashboard</h1>
+                <p class="text-muted">Welcome, <strong>@User.Identity?.Name</strong>!</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <div class="card border-primary">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-people"></i> Customers</h5>
+                        <p class="card-text text-muted">Manage customers</p>
+                        <a asp-page="/Customers" class="btn btn-sm btn-primary">View</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-3">
+                <div class="card border-info">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-file-earmark-text"></i> Licenses</h5>
+                        <p class="card-text text-muted">Manage licenses</p>
+                        <a asp-page="/Licenses" class="btn btn-sm btn-info">View</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-3">
+                <div class="card border-success">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-building"></i> Tenants</h5>
+                        <p class="card-text text-muted">Manage tenants</p>
+                        <a asp-page="/Tenants" class="btn btn-sm btn-success">View</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-3">
+                <div class="card border-warning">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-bell"></i> Notifications</h5>
+                        <p class="card-text text-muted">View notifications</p>
+                        <a asp-page="/Notifications" class="btn btn-sm btn-warning">View</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (User.HasClaim("Role", "Admin"))
+        {
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <div class="alert alert-info" role="alert">
+                        <h5><i class="bi bi-shield-check"></i> Administrator Panel</h5>
+                        <p class="mb-0">As an administrator, you have access to the <a asp-page="/Users">User Management</a> page where you can manage users and assign them to tenants.</p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

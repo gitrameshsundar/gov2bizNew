@@ -1,0 +1,144 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+namespace LicenseManagement.Pages
+{
+    public class NotificationsModel : PageModel
+    {
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _configuration;
+
+        public List<NotificationDto> Notifications { get; set; } = new();
+        public string? ErrorMessage { get; set; }
+        public string? SuccessMessage { get; set; }
+
+        public NotificationsModel(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+        {
+            _httpClientFactory = httpClientFactory;
+            _configuration = configuration;
+        }
+
+        public async Task OnGetAsync()
+        {
+            await LoadNotifications();
+        }
+
+        public async Task<IActionResult> OnPostSaveNotificationAsync(int notificationId, string title, string message, string status)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                ErrorMessage = "Notification title is required.";
+                await LoadNotifications();
+                return Page();
+            }
+
+            try
+            {
+                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var notification = new { title, message, status };
+                var content = new StringContent(JsonSerializer.Serialize(notification), Encoding.UTF8, "application/json");
+
+                HttpResponseMessage response;
+                
+                if (notificationId > 0)
+                {
+                    response = await client.PutAsync($"api/notifications/{notificationId}", content);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        SuccessMessage = "Notification updated successfully!";
+                    }
+                }
+                else
+                {
+                    response = await client.PostAsync("api/notifications", content);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        SuccessMessage = "Notification created successfully!";
+                    }
+                }
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    ErrorMessage = $"Error saving notification: {response.StatusCode}";
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"An error occurred: {ex.Message}";
+            }
+
+            await LoadNotifications();
+            return Page();
+        }
+
+        public async Task<IActionResult> OnPostDeleteNotificationAsync(int notificationId)
+        {
+            try
+            {
+                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var response = await client.DeleteAsync($"api/notifications/{notificationId}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    SuccessMessage = "Notification deleted successfully!";
+                }
+                else
+                {
+                    ErrorMessage = $"Error deleting notification: {response.StatusCode}";
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"An error occurred: {ex.Message}";
+            }
+
+            await LoadNotifications();
+            return Page();
+        }
+
+        private async Task LoadNotifications()
+        {
+            try
+            {
+                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var response = await client.GetAsync("api/notifications");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonContent = await response.Content.ReadAsStringAsync();
+                    Notifications = JsonSerializer.Deserialize<List<NotificationDto>>(jsonContent, 
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                }
+                else if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    ErrorMessage = "Unauthorized: Please log in to access notifications.";
+                }
+                else
+                {
+                    ErrorMessage = "Unable to load notifications. Please try again later.";
+                }
+            }
+            catch (HttpRequestException)
+            {
+                ErrorMessage = "Could not connect to the API. Please ensure the API Gateway is running.";
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"An error occurred: {ex.Message}";
+            }
+        }
+    }
+
+    public class NotificationDto
+    {
+        public int NotificationID { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public string Status { get; set; } = "Unread";
+        public DateTime CreatedDate { get; set; }
+    }
+}

@@ -5,4 +5,5 @@
   <Project Path="licenses/licenses.csproj" />
   <Project Path="notifications/notifications.csproj" />
   <Project Path="tenants/tenants.csproj" />
+  <Project Path="users/users.csproj" />
 </Solution>
