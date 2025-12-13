@@ -90,12 +90,12 @@ namespace LicenseManagement.Pages
             try
             {
                 var client = _httpClientFactory.CreateClient("CustomerAPI");
-                var token = HttpContext.Session.GetString("AuthToken");
+                //var token = HttpContext.Session.GetString("AuthToken");
                 
-                if (!string.IsNullOrEmpty(token))
-                {
-                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-                }
+                //if (!string.IsNullOrEmpty(token))
+                //{
+                //    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                //}
 
                 var response = await client.DeleteAsync($"api/customers/{customerId}");
 
@@ -122,12 +122,12 @@ namespace LicenseManagement.Pages
             try
             {
                 var client = _httpClientFactory.CreateClient("CustomerAPI");
-                var token = HttpContext.Session.GetString("AuthToken");
+                //var token = HttpContext.Session.GetString("AuthToken");
                 
-                if (!string.IsNullOrEmpty(token))
-                {
-                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-                }
+                //if (!string.IsNullOrEmpty(token))
+                //{
+                //    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                //}
 
                 var response = await client.GetAsync("api/customers");
 
