@@ -18,11 +18,12 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
+    //";http"://localhost:5002
     "https": {
       "commandName": "Project",
       "dotnetRunMessages": true,
-      "launchBrowser": true,
-      "applicationUrl": "https://localhost:7000;http://localhost:5002",
+      "launchBrowser": false,
+      "applicationUrl": "https://localhost:7000",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
