@@ -108,8 +108,8 @@ app.MapPost("/api/auth/refresh", RefreshToken)
 
 // CRUD Endpoints for Customers (Authorization Required)
 var customerGroup = app.MapGroup("/api/customers")
-    .WithName("Customers")
-    .RequireAuthorization();
+    .WithName("Customers");
+    //.RequireAuthorization();
 
 // GET all customers
 customerGroup.MapGet("/", GetAllCustomers)
@@ -159,8 +159,8 @@ app.Run();
 async Task<IResult> Login(LoginRequest request, IConfiguration config)
 {
     // Demo credentials - replace with actual user validation
-    if (request.Username != "string" || request.Password != "string")
-        return Results.Unauthorized();
+    //if (request.Username != "string" || request.Password != "string")
+     //   return Results.Unauthorized();
 
     var jwtSettings = config.GetSection("JwtSettings");
     var secretKey = jwtSettings["SecretKey"];
