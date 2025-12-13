@@ -1,4 +1,8 @@
 <Solution>
   <Project Path="ApiGateway/ApiGateway.csproj" />
   <Project Path="customers/customers.csproj" Id="9678bb43-a34a-48ff-8534-73bcbc409c69" />
+  <Project Path="LicenseManagement/LicenseManagement.csproj" Id="5acadd47-2212-49c1-8db1-a073f1165a32" />
+  <Project Path="licenses/licenses.csproj" />
+  <Project Path="notifications/notifications.csproj" />
+  <Project Path="tenants/tenants.csproj" />
 </Solution>

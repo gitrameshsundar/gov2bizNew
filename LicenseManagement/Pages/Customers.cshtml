@@ -1,0 +1,139 @@
+@page
+@model CustomersModel
+@{
+    ViewData["Title"] = "Customer Management";
+}
+
+<div class="container mt-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>Customer Management</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
+                <i class="bi bi-plus-circle"></i> Add Customer
+            </button>
+        </div>
+    </div>
+
+    @if (Model.ErrorMessage != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (Model.SuccessMessage != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.SuccessMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Customer Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Customers != null && Model.Customers.Any())
+                {
+                    @foreach (var customer in Model.Customers)
+                    {
+                        <tr>
+                            <td>@customer.CustomerID</td>
+                            <td>@customer.Name</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="editCustomer(@customer.CustomerID, '@customer.Name')">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="if(confirm('Are you sure?')) { deleteCustomer(@customer.CustomerID); }">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="3" class="text-center text-muted">No customers found</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Customer Modal -->
+<div class="modal fade" id="addCustomerModal" tabindex="-1" aria-labelledby="customerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customerModalLabel">Add Customer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" asp-page-handler="SaveCustomer">
+                <div class="modal-body">
+                    <input type="hidden" id="customerId" name="customerId" />
+                    <div class="mb-3">
+                        <label for="customerName" class="form-label">Customer Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="customerName" name="customerName" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveBtn">Save Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const modal = new bootstrap.Modal(document.getElementById('addCustomerModal'));
+
+        function editCustomer(id, name) {
+            document.getElementById('customerModalLabel').textContent = 'Edit Customer';
+            document.getElementById('customerId').value = id;
+            document.getElementById('customerName').value = name;
+            document.getElementById('saveBtn').textContent = 'Update Customer';
+            modal.show();
+        }
+
+        function deleteCustomer(id) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = window.location.href + '?handler=DeleteCustomer';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'customerId';
+            input.value = id;
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        // Reset form when modal is closed
+        document.getElementById('addCustomerModal').addEventListener('hidden.bs.modal', function () {
+            document.getElementById('customerModalLabel').textContent = 'Add Customer';
+            document.getElementById('customerId').value = '';
+            document.getElementById('customerName').value = '';
+            document.getElementById('saveBtn').textContent = 'Save Customer';
+        });
+
+        // Reload page on modal close for success
+        document.getElementById('addCustomerModal').addEventListener('hidden.bs.modal', function () {
+            location.reload();
+        });
+    </script>
+}

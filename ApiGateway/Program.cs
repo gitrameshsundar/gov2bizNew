@@ -90,7 +90,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+//builder.Services.AddAuthorization();
 
 // Add Ocelot
 builder.Services.AddOcelot();
@@ -127,8 +127,8 @@ app.UseCors("AllowAll");
 // Use routing BEFORE Ocelot so local endpoints get matched first
 app.UseRouting();
 
-app.UseAuthentication();
-app.UseAuthorization();
+//app.UseAuthentication();
+//app.UseAuthorization();
 
 // Map local endpoints (these need routing enabled)
 app.UseEndpoints(endpoints =>
