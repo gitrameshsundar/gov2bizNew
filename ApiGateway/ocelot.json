@@ -1,32 +1,6 @@
 {
   "Routes": [
     {
-      "DownstreamPathTemplate": "/api/auth/login",
-      "DownstreamScheme": "https",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 7084
-        }
-      ],
-      "UpstreamPathTemplate": "/api/auth/login",
-      "UpstreamHttpMethod": [ "POST" ],
-      "ReRouteIsCaseSensitive": false
-    },
-    {
-      "DownstreamPathTemplate": "/api/auth/refresh",
-      "DownstreamScheme": "https",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 7084
-        }
-      ],
-      "UpstreamPathTemplate": "/api/auth/refresh",
-      "UpstreamHttpMethod": [ "POST" ],
-      "ReRouteIsCaseSensitive": false
-    },
-    {
       "DownstreamPathTemplate": "/api/customers",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [

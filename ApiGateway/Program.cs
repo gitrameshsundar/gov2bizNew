@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -108,7 +111,7 @@ var app = builder.Build();
 // Force HTTPS in all environments
 app.UseHttpsRedirection();
 
-// Configure Swagger BEFORE Ocelot middleware
+// Configure Swagger BEFORE auth endpoints
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -120,45 +123,186 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowAll");
+
+// Use routing BEFORE Ocelot so local endpoints get matched first
+app.UseRouting();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/", () => Results.Ok(new
+// Map local endpoints (these need routing enabled)
+app.UseEndpoints(endpoints =>
 {
-    message = "API Gateway",
-    version = "1.0",
-    endpoints = new[]
-    {
-        new { path = "/health", description = "Health check" },
-        new { path = "/gateway/info", description = "Gateway information" },
-        new { path = "/api/auth/login", description = "Login endpoint" },
-        new { path = "/api/customers", description = "Customers API" }
-    },
-    swaggerUrl = "/swagger/index.html"
-}))
-.WithName("Root")
-.WithSummary("API Gateway root endpoint")
-.AllowAnonymous();
+    endpoints.MapPost("/api/auth/login", Login)
+        .WithName("Login")
+        .WithSummary("Login and get JWT token")
+        .AllowAnonymous()
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized);
 
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
-    .WithName("HealthCheck")
-    .WithSummary("API Gateway health check")
-    .AllowAnonymous();
+    endpoints.MapPost("/api/auth/refresh", RefreshToken)
+        .WithName("RefreshToken")
+        .WithSummary("Refresh JWT token")
+        .AllowAnonymous()
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized);
 
-app.MapGet("/gateway/info", () => Results.Ok(new
-{
-    name = "API Gateway",
-    version = "1.0",
-    services = new[]
-    {
-        new { name = "Customers Service", url = "https://localhost:7084" }
-    }
-}))
-.WithName("GatewayInfo")
-.WithSummary("Get API Gateway information")
-.AllowAnonymous();
+    endpoints.MapGet("/", RootHandler)
+        .WithName("Root")
+        .WithSummary("API Gateway root endpoint")
+        .AllowAnonymous();
+
+    endpoints.MapGet("/health", HealthHandler)
+        .WithName("HealthCheck")
+        .WithSummary("API Gateway health check")
+        .AllowAnonymous();
+
+    endpoints.MapGet("/gateway/info", GatewayInfoHandler)
+        .WithName("GatewayInfo")
+        .WithSummary("Get API Gateway information")
+        .AllowAnonymous();
+});
 
 // Use Ocelot middleware LAST - it will catch all remaining routes
 await app.UseOcelot();
 
 app.Run();
+
+// Handler functions (moved outside of UseEndpoints for clarity)
+async Task<IResult> Login([FromBody] LoginRequest request, [FromServices] IConfiguration config)
+{
+    var jwtSettings = config.GetSection("JwtSettings");
+    var secretKey = jwtSettings["SecretKey"];
+    var issuer = jwtSettings["Issuer"];
+    var audience = jwtSettings["Audience"];
+    var expirationMinutes = int.Parse(jwtSettings["ExpirationMinutes"] ?? "60");
+
+    var keyBytes = Encoding.ASCII.GetBytes(secretKey);
+    var tokenHandler = new JwtSecurityTokenHandler();
+
+    var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.NameIdentifier, "1"),
+        new Claim(ClaimTypes.Name, request.Username),
+        new Claim("sub", request.Username),
+        new Claim(ClaimTypes.Role, "Admin")
+    };
+
+    var tokenDescriptor = new SecurityTokenDescriptor
+    {
+        Subject = new ClaimsIdentity(claims),
+        Expires = DateTime.UtcNow.AddMinutes(expirationMinutes),
+        Issuer = issuer,
+        Audience = audience,
+        SigningCredentials = new SigningCredentials(
+            new SymmetricSecurityKey(keyBytes),
+            SecurityAlgorithms.HmacSha256Signature)
+    };
+
+    var token = tokenHandler.CreateToken(tokenDescriptor);
+    var accessToken = tokenHandler.WriteToken(token);
+
+    return Results.Ok(new AuthResponse
+    {
+        AccessToken = accessToken,
+        ExpiresIn = expirationMinutes * 60,
+        TokenType = "Bearer"
+    });
+}
+
+async Task<IResult> RefreshToken([FromBody] RefreshTokenRequest request, [FromServices] IConfiguration config)
+{
+    try
+    {
+        var jwtSettings = config.GetSection("JwtSettings");
+        var secretKey = jwtSettings["SecretKey"];
+        var issuer = jwtSettings["Issuer"];
+        var audience = jwtSettings["Audience"];
+        var expirationMinutes = int.Parse(jwtSettings["ExpirationMinutes"] ?? "60");
+
+        var keyBytes = Encoding.ASCII.GetBytes(secretKey);
+        var tokenHandler = new JwtSecurityTokenHandler();
+
+        var principal = tokenHandler.ValidateToken(request.AccessToken, new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = false
+        }, out SecurityToken validatedToken);
+
+        var claims = principal.Claims.ToList();
+
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(claims),
+            Expires = DateTime.UtcNow.AddMinutes(expirationMinutes),
+            Issuer = issuer,
+            Audience = audience,
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(keyBytes),
+                SecurityAlgorithms.HmacSha256Signature)
+        };
+
+        var newToken = tokenHandler.CreateToken(tokenDescriptor);
+        var accessToken = tokenHandler.WriteToken(newToken);
+
+        return Results.Ok(new AuthResponse
+        {
+            AccessToken = accessToken,
+            ExpiresIn = expirationMinutes * 60,
+            TokenType = "Bearer"
+        });
+    }
+    catch
+    {
+        return Results.Unauthorized();
+    }
+}
+
+async Task<IResult> RootHandler()
+{
+    return Results.Ok(new
+    {
+        message = "API Gateway",
+        version = "1.0",
+        swaggerUrl = "/swagger/index.html"
+    });
+}
+
+async Task<IResult> HealthHandler()
+{
+    return Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
+}
+
+async Task<IResult> GatewayInfoHandler()
+{
+    return Results.Ok(new
+    {
+        name = "API Gateway",
+        version = "1.0",
+        services = new[]
+        {
+            new { name = "Customers Service", url = "https://localhost:7084" }
+        }
+    });
+}
+
+class LoginRequest
+{
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
+
+class RefreshTokenRequest
+{
+    public string AccessToken { get; set; } = string.Empty;
+}
+
+class AuthResponse
+{
+    public string AccessToken { get; set; } = string.Empty;
+    public int ExpiresIn { get; set; }
+    public string TokenType { get; set; } = "Bearer";
+}
