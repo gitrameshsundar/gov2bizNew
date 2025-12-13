@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ApiGateway/ApiGateway.csproj" />
+  <Project Path="customers/customers.csproj" Id="9678bb43-a34a-48ff-8534-73bcbc409c69" />
+</Solution>
