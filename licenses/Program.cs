@@ -1,5 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using LicenseManagement.Data.Models;
+using LicenseManagement.Data.Data;
+using LicenseManagement.Data.Repositories;
+using LicenseManagement.Data.Services;
+using LicenseManagement.Data.Middleware;
+using LicenseManagement.Data.Results;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,8 +19,6 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1",
         Description = "API for managing licenses"
     });
-
-    
 });
 
 // Add DbContext
@@ -22,6 +26,9 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<LicenseDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+builder.Services.AddScoped<ILicenseRepository, LicenseRepository>();
+builder.Services.AddScoped<ILicenseService, LicenseService>();
+builder.Services.AddLogging();
 
 builder.Services.AddCors(options =>
 {
@@ -33,6 +40,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -46,96 +54,68 @@ app.UseCors("AllowAll");
 // License Endpoints
 var licenseGroup = app.MapGroup("/api/licenses")
     .WithName("Licenses");
-    //.RequireAuthorization();
 
 licenseGroup.MapGet("/", GetAllLicenses)
     .WithName("GetAllLicenses")
     .WithSummary("Get all licenses")
-    .Produces<List<License>>(StatusCodes.Status200OK);
+    .Produces<ApiResult<List<License>>>(StatusCodes.Status200OK);
 
 licenseGroup.MapGet("/{licenseId}", GetLicenseById)
     .WithName("GetLicenseById")
     .WithSummary("Get license by ID")
-    .Produces<License>(StatusCodes.Status200OK)
-    .Produces(StatusCodes.Status404NotFound);
+    .Produces<ApiResult<License>>(StatusCodes.Status200OK)
+    .Produces<ApiResult<License>>(StatusCodes.Status404NotFound);
 
 licenseGroup.MapPost("/", CreateLicense)
     .WithName("CreateLicense")
     .WithSummary("Create a new license")
     .Accepts<License>("application/json")
-    .Produces<License>(StatusCodes.Status201Created);
+    .Produces<ApiResult<License>>(StatusCodes.Status201Created);
 
 licenseGroup.MapPut("/{licenseId}", UpdateLicense)
     .WithName("UpdateLicense")
     .WithSummary("Update an existing license")
     .Accepts<License>("application/json")
-    .Produces<License>(StatusCodes.Status200OK);
+    .Produces<ApiResult<License>>(StatusCodes.Status200OK);
 
 licenseGroup.MapDelete("/{licenseId}", DeleteLicense)
     .WithName("DeleteLicense")
     .WithSummary("Delete a license")
-    .Produces(StatusCodes.Status204NoContent);
+    .Produces<ApiResponse>(StatusCodes.Status204NoContent);
 
 app.Run();
 
 // Handlers
-async Task<IResult> GetAllLicenses(LicenseDbContext db)
+async Task<IResult> GetAllLicenses(ILicenseService service)
 {
-    var licenses = await db.Licenses.ToListAsync();
-    return Results.Ok(licenses);
+    var licenses = await service.GetAllLicensesAsync();
+    return Results.Ok(ApiResult<List<License>>.SuccessResult(licenses, "Licenses retrieved successfully"));
 }
 
-async Task<IResult> GetLicenseById(int licenseId, LicenseDbContext db)
+async Task<IResult> GetLicenseById(int licenseId, ILicenseService service)
 {
-    var license = await db.Licenses.FirstOrDefaultAsync(l => l.LicenseID == licenseId);
+    var license = await service.GetLicenseByIdAsync(licenseId);
     if (license == null)
-        return Results.NotFound(new { message = "License not found" });
-    return Results.Ok(license);
+        return Results.NotFound(ApiResult<License>.FailureResult("License not found"));
+    return Results.Ok(ApiResult<License>.SuccessResult(license, "License retrieved successfully"));
 }
 
-async Task<IResult> CreateLicense(License license, LicenseDbContext db)
+async Task<IResult> CreateLicense(License license, ILicenseService service)
 {
-    if (string.IsNullOrWhiteSpace(license.Name))
-        return Results.BadRequest(new { message = "License name is required" });
-
-    db.Licenses.Add(license);
-    await db.SaveChangesAsync();
-    return Results.CreatedAtRoute("GetLicenseById", new { licenseId = license.LicenseID }, license);
+    var createdLicense = await service.CreateLicenseAsync(license);
+    return Results.CreatedAtRoute("GetLicenseById", new { licenseId = createdLicense.LicenseID },
+        ApiResult<License>.SuccessResult(createdLicense, "License created successfully"));
 }
 
-async Task<IResult> UpdateLicense(int licenseId, License licenseUpdate, LicenseDbContext db)
+async Task<IResult> UpdateLicense(int licenseId, License licenseUpdate, ILicenseService service)
 {
-    var license = await db.Licenses.FirstOrDefaultAsync(l => l.LicenseID == licenseId);
-    if (license == null)
-        return Results.NotFound(new { message = "License not found" });
-
-    license.Name = licenseUpdate.Name;
-    await db.SaveChangesAsync();
-    return Results.Ok(license);
+    var license = await service.UpdateLicenseAsync(licenseId, licenseUpdate);
+    return Results.Ok(ApiResult<License>.SuccessResult(license, "License updated successfully"));
 }
 
-async Task<IResult> DeleteLicense(int licenseId, LicenseDbContext db)
+async Task<IResult> DeleteLicense(int licenseId, ILicenseService service)
 {
-    var license = await db.Licenses.FirstOrDefaultAsync(l => l.LicenseID == licenseId);
-    if (license == null)
-        return Results.NotFound(new { message = "License not found" });
-
-    db.Licenses.Remove(license);
-    await db.SaveChangesAsync();
+    await service.DeleteLicenseAsync(licenseId);
     return Results.NoContent();
 }
 
-// DbContext
-class LicenseDbContext : DbContext
-{
-    public LicenseDbContext(DbContextOptions<LicenseDbContext> options) : base(options) { }
-    public DbSet<License> Licenses { get; set; } = null!;
-
-}
-
-// Models
-class License
-{
-    public int LicenseID { get; set; }
-    public string Name { get; set; } = string.Empty;
-}

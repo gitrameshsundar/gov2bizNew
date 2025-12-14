@@ -12,4 +12,8 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LicenseManagement.Data\LicenseManagement.Data.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Collections.Generic;
+using LicenseManagement.Data.Models;
+using LicenseManagement.Data.Data;
 using System.IdentityModel.Tokens.Jwt;
-using System.Reflection.Emit;
 using System.Security.Claims;
 using System.Text;
+using LicenseManagement.Data.Repositories;
+using LicenseManagement.Data.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,13 +22,54 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1",
         Description = "API for managing users and tenant assignments"
     });
-
 });
 
 // Add DbContext
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<UserDbContext>(options =>
     options.UseSqlServer(connectionString));
+
+// Register Repository & Service
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+// Add logging
+builder.Services.AddLogging();
+
+// Register Repository & Service
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+// Add logging
+builder.Services.AddLogging();
+
+// Register Repository & Service
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+// Add logging
+builder.Services.AddLogging();
+
+// Register Repository & Service
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+// Add logging
+builder.Services.AddLogging();
+
+// Register Repository & Service
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+// Add logging
+builder.Services.AddLogging();
+
+// Register Repository & Service
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+// Add logging
+builder.Services.AddLogging();
 
 builder.Services.AddCors(options =>
 {
@@ -47,7 +90,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 
-// Auth Endpoints (No Authorization Required)
+// Auth Endpoints
 app.MapPost("/api/auth/login", Login)
     .WithName("Login")
     .WithSummary("Login and get JWT token")
@@ -55,25 +98,21 @@ app.MapPost("/api/auth/login", Login)
     .Produces(StatusCodes.Status200OK)
     .Produces(StatusCodes.Status401Unauthorized);
 
-// User Endpoints (Authorization Required)
+// User Endpoints
 var userGroup = app.MapGroup("/api/users")
     .WithName("Users");
-    //.RequireAuthorization();
 
-// GET all users
 userGroup.MapGet("/", GetAllUsers)
     .WithName("GetAllUsers")
     .WithSummary("Get all users")
     .Produces<List<User>>(StatusCodes.Status200OK);
 
-// GET user by ID
 userGroup.MapGet("/{userId}", GetUserById)
     .WithName("GetUserById")
     .WithSummary("Get user by ID")
     .Produces<User>(StatusCodes.Status200OK)
     .Produces(StatusCodes.Status404NotFound);
 
-// POST create user (Admin only)
 userGroup.MapPost("/", CreateUser)
     .WithName("CreateUser")
     .WithSummary("Create a new user")
@@ -81,7 +120,6 @@ userGroup.MapPost("/", CreateUser)
     .Produces<User>(StatusCodes.Status201Created)
     .Produces(StatusCodes.Status400BadRequest);
 
-// PUT update user (Admin only)
 userGroup.MapPut("/{userId}", UpdateUser)
     .WithName("UpdateUser")
     .WithSummary("Update an existing user")
@@ -89,20 +127,17 @@ userGroup.MapPut("/{userId}", UpdateUser)
     .Produces<User>(StatusCodes.Status200OK)
     .Produces(StatusCodes.Status404NotFound);
 
-// DELETE user (Admin only)
 userGroup.MapDelete("/{userId}", DeleteUser)
     .WithName("DeleteUser")
     .WithSummary("Delete a user")
     .Produces(StatusCodes.Status204NoContent)
     .Produces(StatusCodes.Status404NotFound);
 
-// GET users by tenant
 userGroup.MapGet("/tenant/{tenantId}", GetUsersByTenant)
     .WithName("GetUsersByTenant")
     .WithSummary("Get all users assigned to a tenant")
     .Produces<List<User>>(StatusCodes.Status200OK);
 
-// ASSIGN user to tenant
 userGroup.MapPut("/{userId}/tenant/{tenantId}", AssignUserToTenant)
     .WithName("AssignUserToTenant")
     .WithSummary("Assign a user to a tenant")
@@ -208,7 +243,6 @@ async Task<IResult> CreateUser(User user, UserDbContext db)
     if (existingUser != null)
         return Results.BadRequest(new { message = "Username already exists" });
 
-    // Hash password
     user.Password = HashPassword(user.Password ?? "User@123");
     user.CreatedDate = DateTime.UtcNow;
 
@@ -321,39 +355,5 @@ static bool VerifyPassword(string password, string hash)
     return BCrypt.Net.BCrypt.Verify(password, hash);
 }
 
-// DbContext
-class UserDbContext : DbContext
-{
-    public UserDbContext(DbContextOptions<UserDbContext> options) : base(options) { }
 
-    public DbSet<User> Users { get; set; } = null!;
-}
 
-// Models
-class User
-{
-    public int UserID { get; set; }
-    public string Username { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-    public string Role { get; set; } = "User";
-    public int TenantID { get; set; }
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-    public DateTime? UpdatedDate { get; set; }
-}
-
-class LoginRequest
-{
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-}
-
-class AuthResponse
-{
-    public string AccessToken { get; set; } = string.Empty;
-    public int ExpiresIn { get; set; }
-    public string TokenType { get; set; } = "Bearer";
-    public int UserId { get; set; }
-    public string Username { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
-}

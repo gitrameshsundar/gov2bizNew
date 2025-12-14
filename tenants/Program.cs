@@ -1,5 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using LicenseManagement.Data.Models;
+using LicenseManagement.Data.Data;
+using LicenseManagement.Data.Repositories;
+using LicenseManagement.Data.Services;
+using LicenseManagement.Data.Middleware;
+using LicenseManagement.Data.Results;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,14 +18,15 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1",
         Description = "API for managing tenants"
     });
-
-
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<TenantDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+builder.Services.AddScoped<ITenantRepository, TenantRepository>();
+builder.Services.AddScoped<ITenantService, TenantService>();
+builder.Services.AddLogging();
 
 builder.Services.AddCors(options =>
 {
@@ -31,6 +38,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -41,92 +49,65 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 
-
 var tenantGroup = app.MapGroup("/api/tenants")
     .WithName("Tenants");
-//.RequireAuthorization();
 
 tenantGroup.MapGet("/", GetAllTenants)
     .WithName("GetAllTenants")
     .WithSummary("Get all tenants")
-    .Produces<List<Tenant>>(StatusCodes.Status200OK);
+    .Produces<ApiResult<List<Tenant>>>(StatusCodes.Status200OK);
 
 tenantGroup.MapGet("/{tenantId}", GetTenantById)
     .WithName("GetTenantById")
     .WithSummary("Get tenant by ID")
-    .Produces<Tenant>(StatusCodes.Status200OK);
+    .Produces<ApiResult<Tenant>>(StatusCodes.Status200OK);
 
 tenantGroup.MapPost("/", CreateTenant)
     .WithName("CreateTenant")
     .WithSummary("Create a new tenant")
-    .Produces<Tenant>(StatusCodes.Status201Created);
+    .Produces<ApiResult<Tenant>>(StatusCodes.Status201Created);
 
 tenantGroup.MapPut("/{tenantId}", UpdateTenant)
     .WithName("UpdateTenant")
     .WithSummary("Update an existing tenant")
-    .Produces<Tenant>(StatusCodes.Status200OK);
+    .Produces<ApiResult<Tenant>>(StatusCodes.Status200OK);
 
 tenantGroup.MapDelete("/{tenantId}", DeleteTenant)
     .WithName("DeleteTenant")
     .WithSummary("Delete a tenant")
-    .Produces(StatusCodes.Status204NoContent);
+    .Produces<ApiResponse>(StatusCodes.Status204NoContent);
 
 app.Run();
 
-async Task<IResult> GetAllTenants(TenantDbContext db)
+async Task<IResult> GetAllTenants(ITenantService service)
 {
-    var tenants = await db.Tenants.ToListAsync();
-    return Results.Ok(tenants);
+    var tenants = await service.GetAllTenantsAsync();
+    return Results.Ok(ApiResult<List<Tenant>>.SuccessResult(tenants, "Tenants retrieved successfully"));
 }
 
-async Task<IResult> GetTenantById(int tenantId, TenantDbContext db)
+async Task<IResult> GetTenantById(int tenantId, ITenantService service)
 {
-    var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.TenantID == tenantId);
+    var tenant = await service.GetTenantByIdAsync(tenantId);
     if (tenant == null)
-        return Results.NotFound(new { message = "Tenant not found" });
-    return Results.Ok(tenant);
+        return Results.NotFound(ApiResult<Tenant>.FailureResult("Tenant not found"));
+    return Results.Ok(ApiResult<Tenant>.SuccessResult(tenant, "Tenant retrieved successfully"));
 }
 
-async Task<IResult> CreateTenant(Tenant tenant, TenantDbContext db)
+async Task<IResult> CreateTenant(Tenant tenant, ITenantService service)
 {
-    if (string.IsNullOrWhiteSpace(tenant.Name))
-        return Results.BadRequest(new { message = "Tenant name is required" });
-
-    db.Tenants.Add(tenant);
-    await db.SaveChangesAsync();
-    return Results.CreatedAtRoute("GetTenantById", new { tenantId = tenant.TenantID }, tenant);
+    var createdTenant = await service.CreateTenantAsync(tenant);
+    return Results.CreatedAtRoute("GetTenantById", new { tenantId = createdTenant.TenantID },
+        ApiResult<Tenant>.SuccessResult(createdTenant, "Tenant created successfully"));
 }
 
-async Task<IResult> UpdateTenant(int tenantId, Tenant tenantUpdate, TenantDbContext db)
+async Task<IResult> UpdateTenant(int tenantId, Tenant tenantUpdate, ITenantService service)
 {
-    var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.TenantID == tenantId);
-    if (tenant == null)
-        return Results.NotFound(new { message = "Tenant not found" });
-
-    tenant.Name = tenantUpdate.Name;
-    await db.SaveChangesAsync();
-    return Results.Ok(tenant);
+    var tenant = await service.UpdateTenantAsync(tenantId, tenantUpdate);
+    return Results.Ok(ApiResult<Tenant>.SuccessResult(tenant, "Tenant updated successfully"));
 }
 
-async Task<IResult> DeleteTenant(int tenantId, TenantDbContext db)
+async Task<IResult> DeleteTenant(int tenantId, ITenantService service)
 {
-    var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.TenantID == tenantId);
-    if (tenant == null)
-        return Results.NotFound(new { message = "Tenant not found" });
-
-    db.Tenants.Remove(tenant);
-    await db.SaveChangesAsync();
+    await service.DeleteTenantAsync(tenantId);
     return Results.NoContent();
-}
-
-class TenantDbContext : DbContext
-{
-    public TenantDbContext(DbContextOptions<TenantDbContext> options) : base(options) { }
-    public DbSet<Tenant> Tenants { get; set; } = null!;
-}
-
-class Tenant
-{
-    public int TenantID { get; set; }
-    public string Name { get; set; } = string.Empty;
 }

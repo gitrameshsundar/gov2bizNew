@@ -15,4 +15,8 @@
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LicenseManagement.Data\LicenseManagement.Data.csproj" />
+  </ItemGroup>
+
 </Project>

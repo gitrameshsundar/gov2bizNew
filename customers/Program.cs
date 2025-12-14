@@ -1,4 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using LicenseManagement.Data.Models;
+using LicenseManagement.Data.Data;
+using LicenseManagement.Data.Repositories;
+using LicenseManagement.Data.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services
@@ -10,8 +15,14 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<CustomerDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+// Register Repository & Service
+builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
 
-var app = builder.Build();
+// Add logging
+builder.Services.AddLogging();
+
+    var app = builder.Build();
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
@@ -22,25 +33,22 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// CRUD Endpoints for Customers (Authorization Required)
+// CRUD Endpoints for Customers 
 var customerGroup = app.MapGroup("/api/customers")
     .WithName("Customers");
-    //.RequireAuthorization();
 
 // GET all customers
 customerGroup.MapGet("/", GetAllCustomers)
     .WithName("GetAllCustomers")
     .WithSummary("Get all customers")
-    .Produces<List<Customer>>(StatusCodes.Status200OK)
-    .Produces(StatusCodes.Status401Unauthorized);
+    .Produces<List<Customer>>(StatusCodes.Status200OK);
 
 // GET customer by ID
 customerGroup.MapGet("/{customerId}", GetCustomerById)
     .WithName("GetCustomerById")
     .WithSummary("Get customer by ID")
     .Produces<Customer>(StatusCodes.Status200OK)
-    .Produces(StatusCodes.Status404NotFound)
-    .Produces(StatusCodes.Status401Unauthorized);
+    .Produces(StatusCodes.Status404NotFound);
 
 // POST create customer
 customerGroup.MapPost("/", CreateCustomer)
@@ -48,8 +56,7 @@ customerGroup.MapPost("/", CreateCustomer)
     .WithSummary("Create a new customer")
     .Accepts<Customer>("application/json")
     .Produces<Customer>(StatusCodes.Status201Created)
-    .Produces(StatusCodes.Status400BadRequest)
-    .Produces(StatusCodes.Status401Unauthorized);
+    .Produces(StatusCodes.Status400BadRequest);
 
 // PUT update customer
 customerGroup.MapPut("/{customerId}", UpdateCustomer)
@@ -58,95 +65,110 @@ customerGroup.MapPut("/{customerId}", UpdateCustomer)
     .Accepts<Customer>("application/json")
     .Produces<Customer>(StatusCodes.Status200OK)
     .Produces(StatusCodes.Status400BadRequest)
-    .Produces(StatusCodes.Status404NotFound)
-    .Produces(StatusCodes.Status401Unauthorized);
+    .Produces(StatusCodes.Status404NotFound);
 
 // DELETE customer
 customerGroup.MapDelete("/{customerId}", DeleteCustomer)
     .WithName("DeleteCustomer")
     .WithSummary("Delete a customer")
     .Produces(StatusCodes.Status204NoContent)
-    .Produces(StatusCodes.Status404NotFound)
-    .Produces(StatusCodes.Status401Unauthorized);
+    .Produces(StatusCodes.Status404NotFound);
 
 app.Run();
 
 
 
-// Endpoint handlers
-async Task<IResult> GetAllCustomers(CustomerDbContext db)
+// Endpoint handlers (now using service layer)
+async Task<IResult> GetAllCustomers(ICustomerService service)
 {
-    var customers = await db.Customers.ToListAsync();
-    return Results.Ok(customers);
-}
-
-async Task<IResult> GetCustomerById(int customerId, CustomerDbContext db)
-{
-    var customer = await db.Customers.FirstOrDefaultAsync(c => c.CustomerID == customerId);
-    if (customer == null)
-        return Results.NotFound(new { message = "Customer not found" });
-
-    return Results.Ok(customer);
-}
-
-async Task<IResult> CreateCustomer(Customer customer, CustomerDbContext db)
-{
-    if (string.IsNullOrWhiteSpace(customer.Name))
-        return Results.BadRequest(new { message = "Customer name is required" });
-
-    db.Customers.Add(customer);
-    await db.SaveChangesAsync();
-    return Results.CreatedAtRoute("GetCustomerById", new { customerId = customer.CustomerID }, customer);
-}
-
-async Task<IResult> UpdateCustomer(int customerId, Customer customerUpdate, CustomerDbContext db)
-{
-    if (string.IsNullOrWhiteSpace(customerUpdate.Name))
-        return Results.BadRequest(new { message = "Customer name is required" });
-
-    var customer = await db.Customers.FirstOrDefaultAsync(c => c.CustomerID == customerId);
-    if (customer == null)
-        return Results.NotFound(new { message = "Customer not found" });
-
-    customer.Name = customerUpdate.Name;
-    await db.SaveChangesAsync();
-    return Results.Ok(customer);
-}
-
-async Task<IResult> DeleteCustomer(int customerId, CustomerDbContext db)
-{
-    var customer = await db.Customers.FirstOrDefaultAsync(c => c.CustomerID == customerId);
-    if (customer == null)
-        return Results.NotFound(new { message = "Customer not found" });
-
-    db.Customers.Remove(customer);
-    await db.SaveChangesAsync();
-    return Results.NoContent();
-}
-
-// DbContext
-class CustomerDbContext : DbContext
-{
-    public CustomerDbContext(DbContextOptions<CustomerDbContext> options) : base(options) { }
-
-    public DbSet<Customer> Customers { get; set; } = null!;
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    try
     {
-        base.OnModelCreating(modelBuilder);
-
-        modelBuilder.Entity<Customer>(entity =>
-        {
-            entity.HasKey(e => e.CustomerID);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
-        });
+        var customers = await service.GetAllCustomersAsync();
+        return Results.Ok(customers);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message, statusCode: 500);
     }
 }
 
-// Models
-class Customer
+async Task<IResult> GetCustomerById(int customerId, ICustomerService service)
 {
-    public int CustomerID { get; set; }
-    public string Name { get; set; } = string.Empty;
+    try
+    {
+        var customer = await service.GetCustomerByIdAsync(customerId);
+        if (customer == null)
+            return Results.NotFound(new { message = "Customer not found" });
+
+        return Results.Ok(customer);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message, statusCode: 500);
+    }
 }
+
+async Task<IResult> CreateCustomer(Customer customer, ICustomerService service)
+{
+    try
+    {
+        var createdCustomer = await service.CreateCustomerAsync(customer);
+        return Results.CreatedAtRoute("GetCustomerById", new { customerId = createdCustomer.CustomerID }, createdCustomer);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message, statusCode: 500);
+    }
+}
+
+async Task<IResult> UpdateCustomer(int customerId, Customer customerUpdate, ICustomerService service)
+{
+    try
+    {
+        var customer = await service.UpdateCustomerAsync(customerId, customerUpdate);
+        return Results.Ok(customer);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+    catch (KeyNotFoundException ex)
+    {
+        return Results.NotFound(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message, statusCode: 500);
+    }
+}
+
+async Task<IResult> DeleteCustomer(int customerId, ICustomerService service)
+{
+    try
+    {
+        await service.DeleteCustomerAsync(customerId);
+        return Results.NoContent();
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+    catch (KeyNotFoundException ex)
+    {
+        return Results.NotFound(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message, statusCode: 500);
+    }
+}
+
 
