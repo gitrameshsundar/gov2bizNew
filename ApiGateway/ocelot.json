@@ -126,7 +126,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
-          "Port": 7106
+          "Port": 7004
         }
       ],
       "UpstreamPathTemplate": "/api/tenants",
@@ -146,7 +146,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
-          "Port": 7106
+          "Port": 7004
         }
       ],
       "UpstreamPathTemplate": "/api/tenants/{tenantId}",

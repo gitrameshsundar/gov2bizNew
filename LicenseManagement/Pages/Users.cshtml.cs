@@ -189,9 +189,4 @@ namespace LicenseManagement.Pages
         public DateTime CreatedDate { get; set; }
     }
 
-    public class TenantDto
-    {
-        public int TenantID { get; set; }
-        public string Name { get; set; } = string.Empty;
-    }
 }
