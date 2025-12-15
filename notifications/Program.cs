@@ -1,12 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using LicenseManagement.Data.Models;
 using LicenseManagement.Data.Data;
 using LicenseManagement.Data.Repositories;
 using LicenseManagement.Data.Services;
 using LicenseManagement.Data.Middleware;
-using LicenseManagement.Data.Results;
-
+using notifications.Endpoints;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
@@ -19,11 +17,16 @@ builder.Services.AddSwaggerGen(options =>
         Description = "API for managing notifications"
     });
 });
-
+// Add Database Context with SQL Server provider
+// SCOPED LIFETIME: New DbContext instance per HTTP request
+// This ensures proper resource cleanup and avoids thread-safety issues 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<NotificationDbContext>(options =>
     options.UseSqlServer(connectionString));
-
+// Add Repository and Service
+// PATTERN: Dependency Injection with Scoped lifetime
+// - Repository: Manages data access
+// - Service: Manages business logic
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddLogging();
@@ -37,7 +40,12 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+// ============================================================
+// MIDDLEWARE CONFIGURATION (Pipeline)
+// ============================================================
 
+// Add exception handling middleware - must be first!
+// This catches all exceptions thrown in downstream middleware
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -48,67 +56,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
+// ============================================================
+// ENDPOINT MAPPING
+// ============================================================
 
-var notificationGroup = app.MapGroup("/api/notifications")
-    .WithName("Notifications");
-
-notificationGroup.MapGet("/", GetAllNotifications)
-    .WithName("GetAllNotifications")
-    .WithSummary("Get all notifications")
-    .Produces<ApiResult<List<Notification>>>(StatusCodes.Status200OK);
-
-notificationGroup.MapGet("/{notificationId}", GetNotificationById)
-    .WithName("GetNotificationById")
-    .WithSummary("Get notification by ID")
-    .Produces<ApiResult<Notification>>(StatusCodes.Status200OK);
-
-notificationGroup.MapPost("/", CreateNotification)
-    .WithName("CreateNotification")
-    .WithSummary("Create a new notification")
-    .Produces<ApiResult<Notification>>(StatusCodes.Status201Created);
-
-notificationGroup.MapPut("/{notificationId}", UpdateNotification)
-    .WithName("UpdateNotification")
-    .WithSummary("Update a notification")
-    .Produces<ApiResult<Notification>>(StatusCodes.Status200OK);
-
-notificationGroup.MapDelete("/{notificationId}", DeleteNotification)
-    .WithName("DeleteNotification")
-    .WithSummary("Delete a notification")
-    .Produces<ApiResponse>(StatusCodes.Status204NoContent);
+// Map all customer endpoints from the endpoint handler class
+// This keeps Program.cs clean and organized
+app.MapNotificationEndpoints();
 
 app.Run();
-
-async Task<IResult> GetAllNotifications(INotificationService service)
-{
-    var notifications = await service.GetAllNotificationsAsync();
-    return Results.Ok(ApiResult<List<Notification>>.SuccessResult(notifications, "Notifications retrieved successfully"));
-}
-
-async Task<IResult> GetNotificationById(int notificationId, INotificationService service)
-{
-    var notification = await service.GetNotificationByIdAsync(notificationId);
-    if (notification == null)
-        return Results.NotFound(ApiResult<Notification>.FailureResult("Notification not found"));
-    return Results.Ok(ApiResult<Notification>.SuccessResult(notification, "Notification retrieved successfully"));
-}
-
-async Task<IResult> CreateNotification(Notification notification, INotificationService service)
-{
-    var createdNotification = await service.CreateNotificationAsync(notification);
-    return Results.CreatedAtRoute("GetNotificationById", new { notificationId = createdNotification.NotificationID },
-        ApiResult<Notification>.SuccessResult(createdNotification, "Notification created successfully"));
-}
-
-async Task<IResult> UpdateNotification(int notificationId, Notification notificationUpdate, INotificationService service)
-{
-    var notification = await service.UpdateNotificationAsync(notificationId, notificationUpdate);
-    return Results.Ok(ApiResult<Notification>.SuccessResult(notification, "Notification updated successfully"));
-}
-
-async Task<IResult> DeleteNotification(int notificationId, INotificationService service)
-{
-    await service.DeleteNotificationAsync(notificationId);
-    return Results.NoContent();
-}
 

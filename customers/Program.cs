@@ -56,8 +56,18 @@ builder.Services.AddDbContext<CustomerDbContext>(options =>
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 
+
+
 // Add logging
 builder.Services.AddLogging();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+    });
+});
 
 // ============================================================
 // BUILD APPLICATION
@@ -82,7 +92,7 @@ if (app.Environment.IsDevelopment())
 
 // Redirect HTTP to HTTPS
 app.UseHttpsRedirection();
-
+app.UseCors("AllowAll");
 // ============================================================
 // ENDPOINT MAPPING
 // ============================================================
