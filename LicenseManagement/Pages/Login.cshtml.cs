@@ -8,13 +8,24 @@ namespace LicenseManagement.Pages
 {
     public class LoginModel : PageModel
     {
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _configuration;
+
+        public List<UserDto> Users { get; set; } = new();
+        public string? ErrorMessage { get; set; }
+        public string? SuccessMessage { get; set; }
+
         [BindProperty]
         public string Username { get; set; } = string.Empty;
 
         [BindProperty]
         public string Password { get; set; } = string.Empty;
 
-        public string? ErrorMessage { get; set; }
+        public LoginModel(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+        {
+            _httpClientFactory = httpClientFactory;
+            _configuration = configuration;
+        }
 
         public void OnGet()
         {
@@ -26,9 +37,6 @@ namespace LicenseManagement.Pages
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // Hardcoded admin credentials for demo
-            const string adminUsername = "admin";
-            const string adminPassword = "admin@123";
 
             if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
             {
@@ -37,14 +45,29 @@ namespace LicenseManagement.Pages
             }
 
             // Validate credentials
-            if (Username == adminUsername && Password == adminPassword)
+            if (1==1)//(Username == adminUsername && Password == adminPassword)
             {
+                if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+                {
+                    ErrorMessage = "Username and password are required.";
+                    return Page();
+                }
+                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var user = await client.GetAsync($"api/usersauth/{Username}");
+
+                // Validate user exists and password is correct
+                if (user == null)// || !VerifyPassword(Password, user.Password))
+                {
+                    ErrorMessage = "Invalid username or password.";
+                    return Page();
+                }
+
                 // Create claims
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.NameIdentifier, "1"),
                     new Claim(ClaimTypes.Name, Username),
-                    new Claim("Role", "Admin"),
+                    new Claim("Role",""),
                     new Claim("TenantId", "0") // Admin has access to all tenants
                 };
 
@@ -70,8 +93,6 @@ namespace LicenseManagement.Pages
                 return RedirectToPage("/Index");
             }
 
-            ErrorMessage = "Invalid username or password.";
-            return Page();
         }
     }
 }

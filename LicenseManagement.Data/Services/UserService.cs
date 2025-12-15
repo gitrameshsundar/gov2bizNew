@@ -94,8 +94,8 @@ namespace LicenseManagement.Data.Services
             if (string.IsNullOrWhiteSpace(user.Email))
                 throw new ArgumentException("Email is required");
 
-            if (string.IsNullOrWhiteSpace(user.Password))
-                throw new ArgumentException("Password is required");
+            //if (string.IsNullOrWhiteSpace(user.Password))
+               // throw new ArgumentException("Password is required");
         }
     }
 }

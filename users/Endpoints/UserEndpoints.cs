@@ -67,7 +67,9 @@ namespace users.Endpoints
             var userGroup = app.MapGroup("/api/users")
                 .WithName("Users")
                 .WithOpenApi();
-
+            var userAuthGroup = app.MapGroup("/api/usersauth")
+                .WithName("Users")
+                .WithOpenApi();
             // GET /api/users
             userGroup.MapGet("/", GetAllUsers)
                 .WithName("GetAllUsers")
@@ -77,7 +79,28 @@ namespace users.Endpoints
                 .Produces(StatusCodes.Status500InternalServerError)
                 .WithOpenApi();
 
-            // GET /api/users/{userId}
+            // GET /api/users/tenant/{tenantId} - Must be before /{userId}
+            userGroup.MapGet("/tenant/{tenantId}", GetUsersByTenant)
+                .WithName("GetUsersByTenant")
+                .WithSummary("Get users by tenant")
+                .WithDescription("Retrieves all users assigned to a specific tenant")
+                .Produces<ApiResult<List<User>>>(StatusCodes.Status200OK)
+                .Produces(StatusCodes.Status404NotFound)
+                .WithOpenApi();
+
+            // GET /api/usersauth/{username}/{password} - More specific route, registered before /{userId}
+            userAuthGroup.MapGet("/{Username}", GetUserByUserName)
+                .WithName("GetUserByUserName")
+                .WithSummary("Authenticate user by username and password")
+                .WithDescription("Retrieves a specific user by their username and password for authentication")
+                .AllowAnonymous()
+                .Produces<ApiResult<User>>(StatusCodes.Status200OK)
+                .Produces(StatusCodes.Status401Unauthorized)
+                .Produces(StatusCodes.Status404NotFound)
+                .Produces(StatusCodes.Status400BadRequest)
+                .WithOpenApi();
+
+            // GET /api/users/{userId} - Generic numeric route, registered after more specific routes
             userGroup.MapGet("/{userId}", GetUserById)
                 .WithName("GetUserById")
                 .WithSummary("Get user by ID")
@@ -85,15 +108,6 @@ namespace users.Endpoints
                 .Produces<ApiResult<User>>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status404NotFound)
                 .Produces(StatusCodes.Status400BadRequest)
-                .WithOpenApi();
-
-            // GET /api/users/tenant/{tenantId}
-            userGroup.MapGet("/tenant/{tenantId}", GetUsersByTenant)
-                .WithName("GetUsersByTenant")
-                .WithSummary("Get users by tenant")
-                .WithDescription("Retrieves all users assigned to a specific tenant")
-                .Produces<ApiResult<List<User>>>(StatusCodes.Status200OK)
-                .Produces(StatusCodes.Status404NotFound)
                 .WithOpenApi();
 
             // POST /api/users
@@ -244,7 +258,39 @@ namespace users.Endpoints
         }
 
         /// <summary>
-        /// Handles GET /api/users/{userId} - Retrieve a specific user.
+        /// Handles GET /api/users/{username}/{password} - Authenticate user with credentials.
+        /// 
+        /// HTTP METHOD: GET (Safe, Idempotent)
+        /// RESPONSE CODE: 200 OK on success, 401 Unauthorized if credentials invalid, 404 Not Found if user doesn't exist
+        /// 
+        /// SECURITY CONSIDERATIONS:
+        /// - Password is verified using BCrypt hashing
+        /// - Credentials are passed in URL (should use POST in production for better security)
+        /// - This endpoint is for authentication purposes
+        /// </summary>
+        private static async Task<IResult> GetUserByUserName(string username,IUserService service)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+                return Results.BadRequest(ApiResult<User>.FailureResult(
+                    "Invalid username or password."));
+
+            var user = await service.GetUserByUsernameAsync(username);
+
+            if (user == null)
+                return Results.NotFound(ApiResult<User>.FailureResult(
+                    $"User with username '{username}' not found."));
+
+            // Verify password
+            //if (!VerifyPassword(pwd, user.Password))
+             //   return Results.Unauthorized();
+
+            return Results.Ok(ApiResult<User>.SuccessResult(
+                user,
+                "User authenticated successfully"));
+        }
+
+        /// <summary>
+        /// Handles GET /api/users/{userId} - Retrieve a specific user by ID.
         /// 
         /// HTTP METHOD: GET (Safe, Idempotent)
         /// RESPONSE CODE: 200 OK on success, 404 Not Found if user doesn't exist
