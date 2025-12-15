@@ -1,6 +1,6 @@
 [
   {
-    "Name": "New Profile",
+    "Name": "Run UI with services",
     "Projects": [
       {
         "Path": "ApiGateway\\ApiGateway.csproj",
@@ -24,6 +24,10 @@
       },
       {
         "Path": "tenants\\tenants.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "LicenseManagement\\LicenseManagement.csproj",
         "Action": "Start"
       }
     ]
