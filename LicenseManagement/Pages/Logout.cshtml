@@ -1,0 +1,27 @@
+@page
+@model LogoutModel
+@{
+    ViewData["Title"] = "Logout";
+}
+
+<!-- This page is intentionally minimal as the logout happens in the code-behind -->
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="text-center">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Logging out...</span>
+                </div>
+                <h2>Logging out...</h2>
+                <p class="text-muted">Please wait while we sign you out.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Ensure redirect happens
+    setTimeout(function () {
+        window.location.href = '/Login';
+    }, 500);
+</script>
