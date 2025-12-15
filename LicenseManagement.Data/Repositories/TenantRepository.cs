@@ -42,7 +42,7 @@ namespace LicenseManagement.Data.Repositories
                 throw new KeyNotFoundException($"Tenant {id} not found");
 
             existing.Name = tenant.Name;
-            existing.UpdatedDate = DateTime.UtcNow;
+           // existing.UpdatedDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return existing;

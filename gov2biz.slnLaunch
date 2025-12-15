@@ -1,0 +1,31 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "ApiGateway\\ApiGateway.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "customers\\customers.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "licenses\\licenses.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "notifications\\notifications.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "users\\users.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "tenants\\tenants.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
