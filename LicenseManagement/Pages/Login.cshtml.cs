@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace LicenseManagement.Pages
 {
@@ -53,22 +54,41 @@ namespace LicenseManagement.Pages
                     return Page();
                 }
                 var client = _httpClientFactory.CreateClient("CustomerAPI");
-                var user = await client.GetAsync($"api/usersauth/{Username}");
+                var response = await client.GetAsync($"api/usersauth/{Username}");
 
-                // Validate user exists and password is correct
-                if (user == null)// || !VerifyPassword(Password, user.Password))
+                if (!response.IsSuccessStatusCode)
                 {
                     ErrorMessage = "Invalid username or password.";
                     return Page();
                 }
 
-                // Create claims
+                // Parse API response
+                var jsonContent = await response.Content.ReadAsStringAsync();
+                var apiResult = JsonSerializer.Deserialize<ApiResult<UserDto>>(jsonContent,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (apiResult?.Data == null)
+                {
+                    ErrorMessage = "Invalid username or password.";
+                    return Page();
+                }
+
+                var user = apiResult.Data;
+
+                // Verify password (BCrypt comparison)
+                //if (!VerifyPassword(Password, user.Password))
+                //{
+                //    ErrorMessage = "Invalid username or password.";
+                //    return Page();
+                //}
+
+                // Create claims with actual user data
                 var claims = new List<Claim>
                 {
-                    new Claim(ClaimTypes.NameIdentifier, "1"),
-                    new Claim(ClaimTypes.Name, Username),
-                    new Claim("Role",""),
-                    new Claim("TenantId", "0") // Admin has access to all tenants
+                    new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
+                    new Claim(ClaimTypes.Name, user.Username),
+                    new Claim("Role", user.Role),
+                    new Claim("TenantId", user.TenantID.ToString())
                 };
 
                 // Create ClaimsIdentity
@@ -85,10 +105,12 @@ namespace LicenseManagement.Pages
                     new ClaimsPrincipal(claimsIdentity),
                     authProperties);
 
+
                 // Store in session
-                HttpContext.Session.SetString("UserId", "1");
-                HttpContext.Session.SetString("Username", Username);
-                HttpContext.Session.SetString("Role", "Admin");
+                HttpContext.Session.SetString("UserId", user.UserID.ToString());
+                HttpContext.Session.SetString("Username", user.Username);
+                HttpContext.Session.SetString("Role", user.Role);
+                HttpContext.Session.SetString("TenantId", user.TenantID.ToString());
 
                 return RedirectToPage("/Index");
             }
