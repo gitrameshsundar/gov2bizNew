@@ -17,7 +17,7 @@ namespace LicenseManagement.Data.Data
             {
                 entity.HasKey(e => e.LicenseID);
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
-                entity.Property(e => e.CreatedDate).IsRequired();
+                //entity.Property(e => e.CreatedDate).IsRequired();
                 entity.HasIndex(e => e.Name).IsUnique();
             });
         }

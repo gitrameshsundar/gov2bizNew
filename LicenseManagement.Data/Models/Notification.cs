@@ -7,6 +7,6 @@ namespace LicenseManagement.Data.Models
         public string Message { get; set; } = string.Empty;
         public string Status { get; set; } = "Unread";
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-        public DateTime? UpdatedDate { get; set; }
+        //public DateTime? UpdatedDate { get; set; }
     }
 }

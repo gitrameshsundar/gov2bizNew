@@ -44,7 +44,7 @@ namespace LicenseManagement.Data.Repositories
             existing.Title = notification.Title;
             existing.Message = notification.Message;
             existing.Status = notification.Status;
-            existing.UpdatedDate = DateTime.UtcNow;
+            //existing.UpdatedDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return existing;
