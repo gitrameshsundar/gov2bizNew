@@ -135,8 +135,10 @@ namespace LicenseManagement.Pages
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonContent = await response.Content.ReadAsStringAsync();
-                    Users = JsonSerializer.Deserialize<List<UserDto>>(jsonContent, 
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                    var result = JsonSerializer.Deserialize<ApiResult<List<UserDto>>>(jsonContent, 
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    
+                    Users = result?.Data ?? new();
                 }
                 else if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
@@ -167,8 +169,10 @@ namespace LicenseManagement.Pages
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonContent = await response.Content.ReadAsStringAsync();
-                    Tenants = JsonSerializer.Deserialize<List<TenantDto>>(jsonContent, 
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                    var result = JsonSerializer.Deserialize<ApiResult<List<TenantDto>>>(jsonContent, 
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    
+                    Tenants = result?.Data ?? new();
                 }
             }
             catch

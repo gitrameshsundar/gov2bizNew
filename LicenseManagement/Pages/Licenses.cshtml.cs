@@ -110,8 +110,10 @@ namespace LicenseManagement.Pages
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonContent = await response.Content.ReadAsStringAsync();
-                    Licenses = JsonSerializer.Deserialize<List<LicenseDto>>(jsonContent, 
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                    var result = JsonSerializer.Deserialize<ApiResult<List<LicenseDto>>>(jsonContent,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    Licenses = result?.Data ?? new();
                 }
                 else if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {

@@ -110,8 +110,10 @@ namespace LicenseManagement.Pages
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonContent = await response.Content.ReadAsStringAsync();
-                    Tenants = JsonSerializer.Deserialize<List<TenantDto>>(jsonContent, 
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                    var result = JsonSerializer.Deserialize<ApiResult<List<TenantDto>>>(jsonContent, 
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            
+                    Tenants = result?.Data ?? new();
                 }
                 else if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
@@ -137,5 +139,12 @@ namespace LicenseManagement.Pages
     {
         public int TenantID { get; set; }
         public string Name { get; set; } = string.Empty;
+    }
+
+    public class ApiResult<T>
+    {
+        public T Data { get; set; } = default!;
+        public string Message { get; set; } = string.Empty;
+        public bool Success { get; set; }
     }
 }
