@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -17,11 +18,14 @@ namespace LicenseManagement.Pages
         public string? SuccessMessage { get; set; }
 
         [BindProperty]
+        [Required(ErrorMessage = "Username is required")]
+        [StringLength(100, MinimumLength = 3)]
         public string Username { get; set; } = string.Empty;
 
         [BindProperty]
+        [Required(ErrorMessage = "Password is required")]
+        [StringLength(100, MinimumLength = 6)]
         public string Password { get; set; } = string.Empty;
-
         public LoginModel(IHttpClientFactory httpClientFactory, IConfiguration configuration)
         {
             _httpClientFactory = httpClientFactory;
