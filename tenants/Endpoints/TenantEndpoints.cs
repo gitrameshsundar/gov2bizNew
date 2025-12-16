@@ -1,36 +1,32 @@
+using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using LicenseManagement.Data.CQRS.Commands;
+using LicenseManagement.Data.CQRS.Queries;
 using LicenseManagement.Data.Models;
 using LicenseManagement.Data.Results;
-using LicenseManagement.Data.Services;
 
 namespace tenants.Endpoints
 {
     /// <summary>
     /// Endpoint handlers for Tenant API operations.
     /// 
-    /// DESIGN PATTERN: Endpoint Organization Pattern (Minimal APIs)
-    /// PURPOSE: Organizes all tenant-related HTTP endpoint handlers in a single class.
+    /// DESIGN PATTERN: CQRS (Command Query Responsibility Segregation) + Minimal APIs
+    /// PURPOSE: Separates read (Query) and write (Command) operations for better scalability and maintainability.
     /// 
-    /// BENEFITS:
-    /// - Keeps Program.cs clean and focused on configuration
-    /// - Groups related endpoints together
-    /// - Easy to test endpoint logic
-    /// - Follows Single Responsibility Principle
-    /// - Better code organization and maintainability
-    /// - Scalable architecture
-    /// 
-    /// USAGE: In Program.cs:
-    /// app.MapTenantEndpoints();
+    /// CQRS BENEFITS:
+    /// - Commands handle state modifications (Create, Update, Delete)
+    /// - Queries handle data retrieval (Read)
+    /// - Independent optimization of read/write paths
+    /// - Better testability with isolated handlers
+    /// - Improved scalability and flexibility
     /// </summary>
     public static class TenantEndpoints
     {
         /// <summary>
         /// Registers all tenant-related endpoints to the application.
         /// </summary>
-        /// <param name="app">The WebApplication instance</param>
-        /// <returns>The WebApplication for method chaining</returns>
         public static WebApplication MapTenantEndpoints(this WebApplication app)
         {
             var group = app.MapGroup("/api/tenants")
@@ -61,7 +57,7 @@ namespace tenants.Endpoints
                 .WithName("CreateTenant")
                 .WithSummary("Create a new tenant")
                 .WithDescription("Creates a new tenant record in the system")
-                .Accepts<Tenant>("application/json")
+                .Accepts<CreateTenantCommand>("application/json")
                 .Produces<ApiResult<Tenant>>(StatusCodes.Status201Created)
                 .Produces(StatusCodes.Status400BadRequest)
                 .Produces(StatusCodes.Status500InternalServerError)
@@ -72,7 +68,7 @@ namespace tenants.Endpoints
                 .WithName("UpdateTenant")
                 .WithSummary("Update an existing tenant")
                 .WithDescription("Updates tenant information by ID")
-                .Accepts<Tenant>("application/json")
+                .Accepts<UpdateTenantCommand>("application/json")
                 .Produces<ApiResult<Tenant>>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status404NotFound)
                 .Produces(StatusCodes.Status400BadRequest)
@@ -92,78 +88,92 @@ namespace tenants.Endpoints
             return app;
         }
 
+        // ============================================================
+        // QUERY ENDPOINTS (READ OPERATIONS)
+        // ============================================================
+
         /// <summary>
         /// Handles GET /api/tenants - Retrieve all tenants.
+        /// CQRS: Query Handler
         /// </summary>
-        private static async Task<IResult> GetAllTenants(ITenantService service)
+        private static async Task<IResult> GetAllTenants(IMediator mediator)
         {
-            var tenants = await service.GetAllTenantsAsync();
-            return Results.Ok(ApiResult<List<Tenant>>.SuccessResult(
-                tenants,
-                "Tenants retrieved successfully"));
+            var result = await mediator.Send(new GetAllTenantsQuery());
+            return Results.Ok(result);
         }
 
         /// <summary>
         /// Handles GET /api/tenants/{tenantId} - Retrieve a specific tenant.
+        /// CQRS: Query Handler
         /// </summary>
-        private static async Task<IResult> GetTenantById(int tenantId, ITenantService service)
+        private static async Task<IResult> GetTenantById(int tenantId, IMediator mediator)
         {
             if (tenantId <= 0)
                 return Results.BadRequest(ApiResult<Tenant>.FailureResult(
                     "Invalid tenant ID. Must be greater than 0."));
 
-            var tenant = await service.GetTenantByIdAsync(tenantId);
+            var result = await mediator.Send(new GetTenantByIdQuery(tenantId));
+            
+            if (!result.Success)
+                return Results.NotFound(result);
 
-            if (tenant == null)
-                return Results.NotFound(ApiResult<Tenant>.FailureResult(
-                    $"Tenant with ID {tenantId} not found."));
-
-            return Results.Ok(ApiResult<Tenant>.SuccessResult(
-                tenant,
-                "Tenant retrieved successfully"));
+            return Results.Ok(result);
         }
+
+        // ============================================================
+        // COMMAND ENDPOINTS (WRITE OPERATIONS)
+        // ============================================================
 
         /// <summary>
         /// Handles POST /api/tenants - Create a new tenant.
+        /// CQRS: Command Handler
         /// </summary>
-        private static async Task<IResult> CreateTenant(Tenant tenant, ITenantService service)
+        private static async Task<IResult> CreateTenant(CreateTenantCommand command, IMediator mediator)
         {
-            var createdTenant = await service.CreateTenantAsync(tenant);
+            var result = await mediator.Send(command);
+
+            if (!result.Success)
+                return Results.BadRequest(result);
 
             return Results.CreatedAtRoute(
                 "GetTenantById",
-                new { tenantId = createdTenant.TenantID },
-                ApiResult<Tenant>.SuccessResult(
-                    createdTenant,
-                    "Tenant created successfully"));
+                new { tenantId = result.Data?.TenantID },
+                result);
         }
 
         /// <summary>
         /// Handles PUT /api/tenants/{tenantId} - Update an existing tenant.
+        /// CQRS: Command Handler
         /// </summary>
-        private static async Task<IResult> UpdateTenant(int tenantId, Tenant tenantUpdate, ITenantService service)
+        private static async Task<IResult> UpdateTenant(int tenantId, UpdateTenantCommand command, IMediator mediator)
         {
             if (tenantId <= 0)
                 return Results.BadRequest(ApiResult<Tenant>.FailureResult(
                     "Invalid tenant ID. Must be greater than 0."));
 
-            var updatedTenant = await service.UpdateTenantAsync(tenantId, tenantUpdate);
+            command.TenantId = tenantId;
+            var result = await mediator.Send(command);
 
-            return Results.Ok(ApiResult<Tenant>.SuccessResult(
-                updatedTenant,
-                "Tenant updated successfully"));
+            if (!result.Success)
+                return Results.BadRequest(result);
+
+            return Results.Ok(result);
         }
 
         /// <summary>
         /// Handles DELETE /api/tenants/{tenantId} - Delete a tenant.
+        /// CQRS: Command Handler
         /// </summary>
-        private static async Task<IResult> DeleteTenant(int tenantId, ITenantService service)
+        private static async Task<IResult> DeleteTenant(int tenantId, IMediator mediator)
         {
             if (tenantId <= 0)
                 return Results.BadRequest(ApiResult<Tenant>.FailureResult(
                     "Invalid tenant ID. Must be greater than 0."));
 
-            await service.DeleteTenantAsync(tenantId);
+            var result = await mediator.Send(new DeleteTenantCommand(tenantId));
+
+            if (!result.Success)
+                return Results.BadRequest(result);
 
             return Results.NoContent();
         }

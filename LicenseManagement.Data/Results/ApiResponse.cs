@@ -1,26 +1,28 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
 namespace LicenseManagement.Data.Results
 {
-    public class ApiResult<T>
+    public class ApiResponse
     {
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
-        public T? Data { get; set; }
         public List<string> Errors { get; set; } = new();
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
-        public static ApiResult<T> SuccessResult(T data, string message = "Success")
+        public static ApiResponse SuccessResponse(string message = "Success")
         {
-            return new ApiResult<T>
+            return new ApiResponse
             {
                 Success = true,
-                Data = data,
                 Message = message
             };
         }
 
-        public static ApiResult<T> FailureResult(string message, List<string>? errors = null)
+        public static ApiResponse FailureResponse(string message, List<string>? errors = null)
         {
-            return new ApiResult<T>
+            return new ApiResponse
             {
                 Success = false,
                 Message = message,
@@ -28,6 +30,4 @@ namespace LicenseManagement.Data.Results
             };
         }
     }
-
-   
 }
