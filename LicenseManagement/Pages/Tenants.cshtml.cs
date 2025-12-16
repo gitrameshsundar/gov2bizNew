@@ -4,7 +4,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-
+using LicenseManagement.DTO;
 namespace LicenseManagement.Pages
 {
     public class TenantsModel : PageModel
@@ -38,7 +38,7 @@ namespace LicenseManagement.Pages
 
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("GatewayAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var tenant = new { name = tenantName };
                 var content = new StringContent(JsonSerializer.Serialize(tenant), Encoding.UTF8, "application/json");
 
@@ -79,7 +79,7 @@ namespace LicenseManagement.Pages
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var response = await client.DeleteAsync($"api/tenants/{tenantId}");
 
                 if (response.IsSuccessStatusCode)
@@ -104,7 +104,7 @@ namespace LicenseManagement.Pages
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var response = await client.GetAsync("api/tenants");
 
                 if (response.IsSuccessStatusCode)
@@ -135,16 +135,6 @@ namespace LicenseManagement.Pages
         }
     }
 
-    public class TenantDto
-    {
-        public int TenantID { get; set; }
-        public string Name { get; set; } = string.Empty;
-    }
 
-    public class ApiResult<T>
-    {
-        public T Data { get; set; } = default!;
-        public string Message { get; set; } = string.Empty;
-        public bool Success { get; set; }
-    }
+
 }

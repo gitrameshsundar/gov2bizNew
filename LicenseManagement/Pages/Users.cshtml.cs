@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Net;
 using System.Text;
 using System.Text.Json;
-
+using LicenseManagement.DTO;
 namespace LicenseManagement.Pages
 {
     [Authorize]
@@ -55,7 +55,7 @@ namespace LicenseManagement.Pages
 
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var user = new { username, email, role, tenantId };
                 var content = new StringContent(JsonSerializer.Serialize(user), Encoding.UTF8, "application/json");
 
@@ -103,7 +103,7 @@ namespace LicenseManagement.Pages
 
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var response = await client.DeleteAsync($"api/users/{userId}");
 
                 if (response.IsSuccessStatusCode)
@@ -129,7 +129,7 @@ namespace LicenseManagement.Pages
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var response = await client.GetAsync("api/users");
 
                 if (response.IsSuccessStatusCode)
@@ -163,7 +163,7 @@ namespace LicenseManagement.Pages
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var response = await client.GetAsync("api/tenants");
 
                 if (response.IsSuccessStatusCode)
@@ -182,15 +182,6 @@ namespace LicenseManagement.Pages
         }
     }
 
-    public class UserDto
-    {
-        public int UserID { get; set; }
-        public string Username { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string Role { get; set; } = "User";
-        public int TenantID { get; set; }
-        public string TenantName { get; set; } = string.Empty;
-        public DateTime CreatedDate { get; set; }
-    }
+
 
 }

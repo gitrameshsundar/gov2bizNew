@@ -4,7 +4,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-
+using LicenseManagement.DTO;
 namespace LicenseManagement.Pages
 {
     public class LicensesModel : PageModel
@@ -38,7 +38,7 @@ namespace LicenseManagement.Pages
 
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("GatewayAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var license = new { name = licenseName };
                 var content = new StringContent(JsonSerializer.Serialize(license), Encoding.UTF8, "application/json");
 
@@ -79,7 +79,7 @@ namespace LicenseManagement.Pages
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var response = await client.DeleteAsync($"api/licenses/{licenseId}");
 
                 if (response.IsSuccessStatusCode)
@@ -104,7 +104,7 @@ namespace LicenseManagement.Pages
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var response = await client.GetAsync("api/licenses");
 
                 if (response.IsSuccessStatusCode)
@@ -135,9 +135,5 @@ namespace LicenseManagement.Pages
         }
     }
 
-    public class LicenseDto
-    {
-        public int LicenseID { get; set; }
-        public string Name { get; set; } = string.Empty;
-    }
+    
 }

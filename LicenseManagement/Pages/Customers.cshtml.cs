@@ -1,11 +1,12 @@
+using LicenseManagement.DTO;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.ComponentModel.DataAnnotations;
 using System.Net;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-
 namespace LicenseManagement.Pages
 {
     public class CustomersModel : PageModel
@@ -21,6 +22,7 @@ namespace LicenseManagement.Pages
         {
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
+          
         }
 
         public async Task OnGetAsync()
@@ -39,9 +41,11 @@ namespace LicenseManagement.Pages
 
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("GatewayAPI");
+                // Optional: Set BaseAddress here if not done in Program.cs
+                client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 //var token = HttpContext.Session.GetString("AuthToken");
-                
+
                 //if (!string.IsNullOrEmpty(token))
                 //{
                 //    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -90,8 +94,9 @@ namespace LicenseManagement.Pages
             try
             {
                 var client = _httpClientFactory.CreateClient("CustomerAPI");
+                client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 //var token = HttpContext.Session.GetString("AuthToken");
-                
+
                 //if (!string.IsNullOrEmpty(token))
                 //{
                 //    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -122,8 +127,9 @@ namespace LicenseManagement.Pages
             try
             {
                 var client = _httpClientFactory.CreateClient("CustomerAPI");
+                client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 //var token = HttpContext.Session.GetString("AuthToken");
-                
+
                 //if (!string.IsNullOrEmpty(token))
                 //{
                 //    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -159,9 +165,5 @@ namespace LicenseManagement.Pages
         }
     }
 
-    public class CustomerDto
-    {
-        public int CustomerID { get; set; }
-        public string Name { get; set; } = string.Empty;
-    }
+  
 }

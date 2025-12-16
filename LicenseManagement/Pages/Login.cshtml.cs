@@ -5,33 +5,24 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text.Json;
-
+using LicenseManagement.DTO;
+using LicenseManagement.Service;
 namespace LicenseManagement.Pages
 {
     public class LoginModel : PageModel
     {
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IConfiguration _configuration;
-
-        public List<UserDto> Users { get; set; } = new();
-        public string? ErrorMessage { get; set; }
-        public string? SuccessMessage { get; set; }
-
+        // Bind the View Model to handle form input
         [BindProperty]
-        [Required(ErrorMessage = "Username is required")]
-        [StringLength(100, MinimumLength = 3)]
-        public string Username { get; set; } = string.Empty;
+        public LoginView LoginInput { get; set; }
 
-        [BindProperty]
-        [Required(ErrorMessage = "Password is required")]
-        [StringLength(100, MinimumLength = 6)]
-        public string Password { get; set; } = string.Empty;
-        public LoginModel(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+        // Inject the Interface, not the Concrete Class
+        private readonly IClientAPIService _apiService;
+
+        // Constructor Injection
+        public LoginModel(IClientAPIService apiService)
         {
-            _httpClientFactory = httpClientFactory;
-            _configuration = configuration;
+            _apiService = apiService;
         }
-
         public void OnGet()
         {
             if (User.Identity?.IsAuthenticated == true)
@@ -42,83 +33,71 @@ namespace LicenseManagement.Pages
 
         public async Task<IActionResult> OnPostAsync()
         {
-
-            if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+            if (!ModelState.IsValid)
             {
-                ErrorMessage = "Username and password are required.";
+                return Page();
+            }
+            if (string.IsNullOrWhiteSpace(LoginInput.Username) || string.IsNullOrWhiteSpace(LoginInput.Password))
+            {
+                LoginInput.ErrorMessage = "Username and password are required.";
                 return Page();
             }
 
-            // Validate credentials
-            if (1==1)//(Username == adminUsername && Password == adminPassword)
+            if (string.IsNullOrWhiteSpace(LoginInput.Username) || string.IsNullOrWhiteSpace(LoginInput.Password))
             {
-                if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
-                {
-                    ErrorMessage = "Username and password are required.";
-                    return Page();
-                }
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
-                var response = await client.GetAsync($"api/usersauth/{Username}");
+                LoginInput.ErrorMessage = "Username and password are required.";
+                return Page();
+            }
+                
 
-                if (!response.IsSuccessStatusCode)
-                {
-                    ErrorMessage = "Invalid username or password.";
-                    return Page();
-                }
+            // Call the separate service class for the API logic
+            var user = await _apiService.LoginAsync(LoginInput);
 
-                // Parse API response
-                var jsonContent = await response.Content.ReadAsStringAsync();
-                var apiResult = JsonSerializer.Deserialize<ApiResult<UserDto>>(jsonContent,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                if (apiResult?.Data == null)
-                {
-                    ErrorMessage = "Invalid username or password.";
-                    return Page();
-                }
-
-                var user = apiResult.Data;
-
-                // Verify password (BCrypt comparison)
-                //if (!VerifyPassword(Password, user.Password))
-                //{
-                //    ErrorMessage = "Invalid username or password.";
-                //    return Page();
-                //}
-
-                // Create claims with actual user data
-                var claims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
-                    new Claim(ClaimTypes.Name, user.Username),
-                    new Claim("Role", user.Role),
-                    new Claim("TenantId", user.TenantID.ToString())
-                };
-
-                // Create ClaimsIdentity
-                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                var authProperties = new AuthenticationProperties
-                {
-                    IsPersistent = true,
-                    ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(30)
-                };
-
-                // Sign in user
-                await HttpContext.SignInAsync(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    new ClaimsPrincipal(claimsIdentity),
-                    authProperties);
-
-
-                // Store in session
-                HttpContext.Session.SetString("UserId", user.UserID.ToString());
-                HttpContext.Session.SetString("Username", user.Username);
-                HttpContext.Session.SetString("Role", user.Role);
-                HttpContext.Session.SetString("TenantId", user.TenantID.ToString());
-
-                return RedirectToPage("/Index");
+            if (user==null)
+            {
+                LoginInput.ErrorMessage = "Invalid username or password.";
+                return Page();
             }
 
+            // Verify password (BCrypt comparison)
+            //if (!VerifyPassword(Password, user.Password))
+            //{
+            //    ErrorMessage = "Invalid username or password.";
+            //    return Page();
+            //}
+
+            // Create claims with actual user data
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim("Role", user.Role),
+                new Claim("TenantId", user.TenantID.ToString())
+            };
+
+            // Create ClaimsIdentity
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(30)
+            };
+
+            // Sign in user
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(claimsIdentity),
+                authProperties);
+
+
+            // Store in session
+            HttpContext.Session.SetString("UserId", user.UserID.ToString());
+            HttpContext.Session.SetString("Username", user.Username);
+            HttpContext.Session.SetString("Role", user.Role);
+            HttpContext.Session.SetString("TenantId", user.TenantID.ToString());
+
+            return RedirectToPage("/Index");
+            
         }
     }
 }

@@ -1,5 +1,8 @@
+﻿using LicenseManagement.Pages;
+using LicenseManagement.Service;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,12 +36,15 @@ builder.Services.AddAuthorization(options =>
     });
 });
 
-// Add HttpClient for API communication
-builder.Services.AddHttpClient("CustomerAPI", client =>
+builder.Services.AddHttpClient("GatewayAPI", client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7000/"); // API Gateway URL
+    string baseAddress = builder.Configuration["APISettings:BaseUrl"]
+        ?? throw new InvalidOperationException("Product API Base URL is not configured.");
+
+    client.BaseAddress = new Uri(baseAddress);
 });
 
+builder.Services.AddScoped<IClientAPIService, ClientAPIService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

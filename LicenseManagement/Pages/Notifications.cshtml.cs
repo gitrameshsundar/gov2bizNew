@@ -4,7 +4,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-
+using LicenseManagement.DTO;
 namespace LicenseManagement.Pages
 {
     public class NotificationsModel : PageModel
@@ -38,7 +38,7 @@ namespace LicenseManagement.Pages
 
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("GatewayAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var notification = new { title, message, status };
                 var content = new StringContent(JsonSerializer.Serialize(notification), Encoding.UTF8, "application/json");
 
@@ -79,7 +79,7 @@ namespace LicenseManagement.Pages
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var response = await client.DeleteAsync($"api/notifications/{notificationId}");
 
                 if (response.IsSuccessStatusCode)
@@ -104,7 +104,7 @@ namespace LicenseManagement.Pages
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var response = await client.GetAsync("api/notifications");
 
                 if (response.IsSuccessStatusCode)
@@ -135,12 +135,5 @@ namespace LicenseManagement.Pages
         }
     }
 
-    public class NotificationDto
-    {
-        public int NotificationID { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string Message { get; set; } = string.Empty;
-        public string Status { get; set; } = "Unread";
-        public DateTime CreatedDate { get; set; }
-    }
+   
 }
