@@ -92,6 +92,9 @@
                     <button type="submit" class="btn btn-primary" id="saveBtn">Save License</button>
                 </div>
             </form>
+            <form id="deleteForm" method="post" asp-page-handler="DeleteLicense" style="display:none;">
+                <input type="hidden" name="licenseId" id="hdnlicenseId" />
+            </form>
         </div>
     </div>
 </div>
@@ -109,18 +112,18 @@
         }
 
         function deleteLicense(id) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = window.location.href + '?handler=DeleteLicense';
-            
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'licenseId';
-            input.value = id;
-            
-            form.appendChild(input);
-            document.body.appendChild(form);
-            form.submit();
+            // const form = document.createElement('form');
+            // const input = document.createElement('input');
+            // input.type = 'hidden';
+            // input.name = 'licenseId';
+            // input.value = id;
+            // form.method = 'POST';
+            // form.action ='?handler=DeleteLicense';
+            // form.appendChild(input);
+            // document.body.appendChild(form);
+            // form.submit();
+            document.getElementById('hdnlicenseId').value = id;
+            document.getElementById('deleteForm').submit();
         }
 
         document.getElementById('addLicenseModal').addEventListener('hidden.bs.modal', function () {

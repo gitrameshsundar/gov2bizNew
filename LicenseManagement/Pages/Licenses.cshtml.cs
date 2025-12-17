@@ -79,7 +79,10 @@ namespace LicenseManagement.Pages
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
+                // Change from "CustomerAPI" to "GatewayAPI" to match OnPostSaveLicenseAsync
+                var client = _httpClientFactory.CreateClient("GatewayAPI");
+                client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
+                
                 var response = await client.DeleteAsync($"api/licenses/{licenseId}");
 
                 if (response.IsSuccessStatusCode)
@@ -88,7 +91,8 @@ namespace LicenseManagement.Pages
                 }
                 else
                 {
-                    ErrorMessage = $"Error deleting license: {response.StatusCode}";
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    ErrorMessage = $"Error deleting license: {response.StatusCode} - {errorContent}";
                 }
             }
             catch (Exception ex)
@@ -104,7 +108,7 @@ namespace LicenseManagement.Pages
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
+                var client = _httpClientFactory.CreateClient("GatewayAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var response = await client.GetAsync("api/licenses");
 
                 if (response.IsSuccessStatusCode)
