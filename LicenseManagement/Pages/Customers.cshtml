@@ -37,7 +37,15 @@
             <thead class="table-dark">
                 <tr>
                     <th>ID</th>
-                    <th>Customer Name</th>
+                    <th>
+                        <a asp-page="./Customers" asp-route-sortOrder="@Model.NameSortOrder" class="text-white text-decoration-none">
+                            Customer Name
+                            @if (Model.CurrentSort == "name")
+                            {
+                                <i class="bi @(Model.NameSortOrder == "name_desc" ? "bi-sort-down" : "bi-sort-up")"></i>
+                            }
+                        </a>
+                    </th>
                     <th>Actions</th>
                 </tr>
             </thead>

@@ -3,10 +3,6 @@
     "Name": "Run UI with services",
     "Projects": [
       {
-        "Path": "ApiGateway\\ApiGateway.csproj",
-        "Action": "Start"
-      },
-      {
         "Path": "customers\\customers.csproj",
         "Action": "Start"
       },
@@ -28,6 +24,10 @@
       },
       {
         "Path": "LicenseManagement\\LicenseManagement.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "ApiGateway\\ApiGateway.csproj",
         "Action": "Start"
       }
     ]

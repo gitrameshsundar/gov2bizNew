@@ -1,10 +1,12 @@
+using Azure;
+using LicenseManagement.DTO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.IO;
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using LicenseManagement.DTO;
 namespace LicenseManagement.Pages
 {
     [Authorize]
@@ -124,7 +126,8 @@ namespace LicenseManagement.Pages
             await LoadTenants();
             return Page();
         }
-
+        // Reduce repeated DB hits
+        [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Any)]
         private async Task LoadUsers()
         {
             try
@@ -134,9 +137,13 @@ namespace LicenseManagement.Pages
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var jsonContent = await response.Content.ReadAsStringAsync();
-                    var result = JsonSerializer.Deserialize<ApiResult<List<UserDto>>>(jsonContent, 
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    JsonSerializerOptions _options = new() { PropertyNameCaseInsensitive = true };
+
+                     using var stream = await response.Content.ReadAsStreamAsync();
+                        var result = await JsonSerializer.DeserializeAsync<ApiResult<List<UserDto>>>(stream, _options);
+                    //var jsonContent = await response.Content.ReadAsStringAsync();
+                    //var result = JsonSerializer.Deserialize<ApiResult<List<UserDto>>>(jsonContent, 
+                    //    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     
                     Users = result?.Data ?? new();
                 }

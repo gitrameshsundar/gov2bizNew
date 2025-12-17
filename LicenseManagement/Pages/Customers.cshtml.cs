@@ -15,8 +15,10 @@ namespace LicenseManagement.Pages
         private readonly IConfiguration _configuration;
 
         public List<CustomerDto> Customers { get; set; } = new();
-        public string? ErrorMessage { get; set; }
+        public string? ErrorMessage { get; set; }       
         public string? SuccessMessage { get; set; }
+        public string CurrentSort { get; set; } = string.Empty;
+        public string NameSortOrder { get; set; } = "name_asc";
 
         public CustomersModel(IHttpClientFactory httpClientFactory, IConfiguration configuration)
         {
@@ -25,9 +27,12 @@ namespace LicenseManagement.Pages
           
         }
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(string? sortOrder)
         {
-            await LoadCustomers();
+            CurrentSort = sortOrder ?? string.Empty;
+            NameSortOrder = CurrentSort == "name_asc" ? "name_desc" : "name_asc";
+
+            await LoadCustomers(sortOrder);
         }
 
         public async Task<IActionResult> OnPostSaveCustomerAsync(int customerId, string customerName)
@@ -122,7 +127,7 @@ namespace LicenseManagement.Pages
             return Page();
         }
 
-        private async Task LoadCustomers()
+        private async Task LoadCustomers(string? sortOrder = null)
         {
             try
             {
@@ -144,6 +149,16 @@ namespace LicenseManagement.Pages
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
                     Customers = result?.Data ?? new();
+
+                    // Apply sorting based on sortOrder parameter
+                    if (sortOrder == "name_desc")
+                    {
+                        Customers = Customers.OrderByDescending(c => c.Name).ToList();
+                    }
+                    else
+                    {
+                        Customers = Customers.OrderBy(c => c.Name).ToList();
+                    }
                 }
                 else if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {

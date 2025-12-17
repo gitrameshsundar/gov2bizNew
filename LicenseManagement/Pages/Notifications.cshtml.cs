@@ -16,6 +16,17 @@ namespace LicenseManagement.Pages
         public string? ErrorMessage { get; set; }
         public string? SuccessMessage { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int PageNumber { get; set; } = 1;
+
+        [BindProperty(SupportsGet = true)]
+        public int PageSize { get; set; } = 10;
+
+        public int TotalCount { get; set; }
+        public int TotalPages { get; set; }
+        public bool HasPreviousPage { get; set; }
+        public bool HasNextPage { get; set; }
+
         public NotificationsModel(IHttpClientFactory httpClientFactory, IConfiguration configuration)
         {
             _httpClientFactory = httpClientFactory;
@@ -24,6 +35,9 @@ namespace LicenseManagement.Pages
 
         public async Task OnGetAsync()
         {
+            if (PageNumber < 1)
+                PageNumber = 1;
+
             await LoadNotifications();
         }
 
@@ -38,7 +52,8 @@ namespace LicenseManagement.Pages
 
             try
             {
-                var client = _httpClientFactory.CreateClient("GatewayAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
+                var client = _httpClientFactory.CreateClient("GatewayAPI");
+                client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var notification = new { title, message, status };
                 var content = new StringContent(JsonSerializer.Serialize(notification), Encoding.UTF8, "application/json");
 
@@ -71,6 +86,7 @@ namespace LicenseManagement.Pages
                 ErrorMessage = $"An error occurred: {ex.Message}";
             }
 
+            PageNumber = 1;
             await LoadNotifications();
             return Page();
         }
@@ -79,7 +95,8 @@ namespace LicenseManagement.Pages
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
+                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var response = await client.DeleteAsync($"api/notifications/{notificationId}");
 
                 if (response.IsSuccessStatusCode)
@@ -104,7 +121,8 @@ namespace LicenseManagement.Pages
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("CustomerAPI"); client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
+                var client = _httpClientFactory.CreateClient("CustomerAPI");
+                client.BaseAddress = new Uri(_configuration["APISettings:BaseUrl"]);
                 var response = await client.GetAsync("api/notifications");
 
                 if (response.IsSuccessStatusCode)
@@ -113,7 +131,20 @@ namespace LicenseManagement.Pages
                     var result = JsonSerializer.Deserialize<ApiResult<List<NotificationDto>>>(jsonContent,
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                    Notifications = result?.Data ?? new();
+                    var allNotifications = result?.Data ?? new();
+                    TotalCount = allNotifications.Count;
+                    TotalPages = Math.Max(1, (int)Math.Ceiling((double)TotalCount / PageSize));
+
+                    if (PageNumber > TotalPages)
+                        PageNumber = TotalPages;
+
+                    HasPreviousPage = PageNumber > 1;
+                    HasNextPage = PageNumber < TotalPages;
+
+                    Notifications = allNotifications
+                        .Skip((PageNumber - 1) * PageSize)
+                        .Take(PageSize)
+                        .ToList();
                 }
                 else if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
@@ -134,6 +165,4 @@ namespace LicenseManagement.Pages
             }
         }
     }
-
-   
 }
